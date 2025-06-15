@@ -94,7 +94,7 @@ public:
     user( string n, string p) : userName(n), password(p) {}
     string getUserName();
     string getPassword();
-    bool logIn( const string &getUserName, const string &password);   // Input and verify password, block if someone logged in
+    bool logIn( const string &UserName, const string &password);   // Input and verify password, block if someone logged in
     bool logOut();  // Logout user, reset loggedIn flag
     static bool isLoggedIn(); 
     virtual ~user() {}
@@ -105,10 +105,12 @@ class admin : public user {
 private:
     int adminId;
 public:
+    admin(){}
     admin( string n, string p, int id) : user(n, p), adminId(id) {}
     // Admin-only functions - allow only if logged in
     void addProduct(inventory *inv);
     void removeProduct(inventory *inv);
+    virtual ~admin()=default;
 };
 
 // CUSTOMER CLASS 
@@ -130,6 +132,7 @@ public:
     void placeOrder(order* o);
     cart getCart();
     cart& getCartAddress();
+    virtual ~customer()=default;
 };
 
 // PRODUCT CLASS 

@@ -1,7 +1,7 @@
 # Online-Shopping-Sytem using C++ (OOP Project)
 A feature-rich, object-oriented shopping platform in C++ with login security, admin control, and file-based data persistence.
 This project was developed not only as a functional system but also as a practical application of theoretical computer science principles.
-Objective
+#Objective:
 The primary objective of this project is to design and implement a simplified yet functional online shopping system using Object-Oriented Programming (OOP) in C++, with a strong focus on modularity, data encapsulation, and role-based access. It aims to simulate key operations of real-world e-commerce platforms in a command-line environment using file handling instead of databases.
 Purpose
 To apply OOP principles (inheritance, polymorphism, encapsulation, abstraction) in a real-life use case.

@@ -1,0 +1,328 @@
+#include "class.h"
+#include <iostream>
+#include <vector>
+#include <fstream>
+using namespace std;
+// Explicitly specify which symbols to use from std
+using std::cout;
+using std::cin;
+using std::getline;
+
+int main() {
+    int choice;
+    customer customers[20];
+    int customerCount = 0;
+    displaySign();
+    // Default customer
+    customers[customerCount++] = customer( "c", "c", 201, "1234567890",10,"islamabad",2005,"pakistan");
+    admin ad( "a", "a", 101);
+    inventory inv(301);
+    loadInventoryFromFile(&inv);
+
+    while (true) {
+        cout << "\nMain Menu:\n";
+        displayMenu();
+        cout << "Enter your choice: ";
+        cin >> choice;
+
+        if (!user::isLoggedIn()) {
+            switch (choice) {
+                case 1: { // CUSTOMER LOGIN
+    string uname, pass;
+    cout << "Enter username: ";
+    cin >> ws;
+    getline(cin, uname);
+    cout << "Enter password: ";
+    cin >> ws;
+    getline(cin, pass);
+
+    bool found = false;
+    int customerIndex = -1;
+    
+    // Find customer using array iteration
+    for (int i = 0; i < customerCount; i++) {
+        if (customers[i].getUserName() == uname && customers[i].getPassword() == pass) {
+            found = true;
+            customerIndex = i;
+            break;
+        }
+    }
+
+    if (!found) {
+        cout << "Login failed. Invalid credentials.\n";
+        break;
+    }
+
+    // Login process
+    if (!customers[customerIndex].logIn(uname, pass)) {
+        cout << "Login failed. Session already active.\n";
+        break;
+    }
+
+    // Customer session loop
+    while (customers[customerIndex].isLoggedIn()) {
+        custMenu();
+        cout << "\nEnter choice (1-7): ";
+        
+        int custChoice;
+        cin >> custChoice;
+        cart& userCart = customers[customerIndex].getCartAddress();
+        
+        switch (custChoice) {
+            case 1: // View products
+                displayProducts(&inv);
+                break;
+
+            case 2: { // Add to cart
+                int id, qty;
+                bool validInput = false;
+                
+                do {
+                    cout << "Enter product ID: ";
+                    if (cin >> id) {
+                        validInput = true;
+                    } else {
+                        cin.clear();
+                        cin.ignore(1000, '\n');
+                        cout << "Invalid input. Numbers only.\n";
+                    }
+                } while (!validInput);
+
+                validInput = false;
+                do {
+                    cout << "Enter quantity: ";
+                    if (cin >> qty && qty > 0) {
+                        validInput = true;
+                    } else {
+                        cin.clear();
+                        cin.ignore(1000, '\n');
+                        cout << "Invalid quantity. Positive numbers only.\n";
+                    }
+                } while (!validInput);
+
+                if (userCart.addProduct(id, qty, &inv)) {
+                    cout << qty << " item(s) added to cart.\n";
+                }
+                break;
+            }
+
+            case 3: { // Remove from cart
+                if (userCart.isEmpty()) {
+                    cout << "Cart is already empty.\n";
+                    break;
+                }
+
+                int pid;
+                cout << "Enter product ID to remove: ";
+                cin >> pid;
+                
+                if (userCart.removeProduct(pid, &inv)) {
+                    cout << "Item removed.\n";
+                } else {
+                    cout << "Item not found in cart.\n";
+                }
+                break;
+            }
+
+            case 4: { // Checkout
+                if (userCart.isEmpty()) {
+                    cout << "No items to checkout.\n";
+                    break;
+                }
+
+                userCart.viewCart();
+                cout << "Confirm checkout (y/n)? ";
+                char confirm;
+                cin >> confirm;
+                
+                if (tolower(confirm) == 'y') {
+                    order* newOrder = userCart.checkout();
+                    if (newOrder) {
+                        customers[customerIndex].placeOrder(newOrder);
+                        cout << "Order total: $" << newOrder->calculateTotal() << "\n";
+                        userCart.clearCart();
+                        cout << "Thank you for your purchase!\n";
+                    }
+                }
+                break;
+            }
+
+            case 5: // Update address
+                customers[customerIndex].address.inputAddress();
+                cout << "Address updated.\n";
+                break;
+
+            case 6: // View orders
+                if (customers[customerIndex].getOrderCount() > 0) {
+                    for (int j = 0; j < customers[customerIndex].getOrderCount(); j++) {
+                        if (customers[customerIndex].orderList[j]) {
+                            customers[customerIndex].orderList[j]->showStatus();
+                        }
+                    }
+                } else {
+                    cout << "No order history.\n";
+                }
+                break;
+
+            case 7: // Logout
+                customers[customerIndex].logOut();
+                cout << "Logged out successfully.\n";
+                break;
+
+            default:
+                cout << "Invalid option. Try again.\n";
+        }
+    }
+    break;
+}
+
+                case 2:             
+    { string aname, apass; 
+    cout << "Enter admin username: ";
+    cin >> ws;
+    getline(cin, aname);
+    cout << "Enter admin password: ";
+    cin >> ws;
+    getline(cin, apass);
+
+    if (ad.logIn(aname, apass)) {
+        while (ad.isLoggedIn()) {
+            adminMenu();
+            cout << "\nEnter choice (1-5): ";
+            
+            int adminChoice;
+            cin >> adminChoice;
+            
+            switch (adminChoice) {
+                case 1:  // Add product
+                    ad.addProduct(&inv);
+                    break;
+
+                case 2:  // Remove product
+                    ad.removeProduct(&inv);
+                    break;
+
+                case 3: {  // Restock
+                    int id, q;
+                    cout << "Enter product ID: ";
+                    cin >> id;
+                    cout << "Enter new quantity: ";
+                    cin >> q;
+                    
+                    bool found = false;
+                    for (int i = 0; i < inv.getProductCount(); i++) {
+                        if (inv.productList[i] && 
+                            inv.productList[i]->getproductId() == id) {
+                            inv.productList[i]->setQuantity(q);
+                            updateProductStockInFile(id, q, inv.productList[i]);
+                            found = true;
+                            cout << "Stock updated!\n";
+                            break;
+                        }
+                    }
+                    if (!found) cout << "Product not found.\n";
+                    break;
+                }
+
+                case 4: {  // Update order status
+                    int customerIdx = -1;
+                    // Find first customer with orders
+                    for (int i = 0; i < customerCount; i++) {
+                        if (customers[i].getOrderCount() > 0) {
+                            customerIdx = i;
+                            break;
+                        }
+                    }
+
+                    if (customerIdx == -1) {
+                        cout << "No orders found.\n";
+                        break;
+                    }
+
+                    cout << "Enter order index (0-" 
+                         << customers[customerIdx].getOrderCount() - 1 << "): ";
+                    int orderIdx;
+                    cin >> orderIdx;
+
+                    cout << "Enter status (1-5):\n"
+                         << "1.Packaged 2.Shipping 3.In Transit 4.Delivered 5.Cancelled\n";
+                    int status;
+                    cin >> status;
+
+                    if (orderIdx >= 0 && orderIdx < customers[customerIdx].getOrderCount() &&
+                        status >= 1 && status <= 5) {
+                        customers[customerIdx].orderList[orderIdx]->updateOrderStatus(status);
+                        cout << "Order status updated!\n";
+                    } else {
+                        cout << "Invalid input!\n";
+                    }
+                    break;
+                }
+
+                case 5:  // Logout
+                    ad.logOut();
+                    cout << "Logged out successfully.\n";
+                    break;
+
+                default:
+                    cout << "Invalid choice! Please enter 1-5.\n";
+            }
+
+            // Clear any remaining input
+            string dummy;
+            getline(cin, dummy);  // Clears the newline after cin >>
+        }
+    } else {
+        cout << "Admin login failed!\n";
+    }
+}
+                    break;
+
+                case 3: {
+                    
+                                
+                                    if (customerCount < 20) {
+                                        int id,cn,pc;
+                                        string name, pass, phone, c, co;
+                                        id=customerCount;
+                                        cout << "Enter customer username: ";
+                                        cin >> ws;
+                                        getline(cin, name);
+                                        cout << "Enter password: ";
+                                        cin >> ws;
+                                        getline( cin, pass);
+                                        cout << "Enter phone: ";
+                                        cin >> phone;
+                                        cout << "Enter street no; ";
+                                        cin>>cn;
+                                        cout << "Enter city: ";
+                                        cin >> ws;
+                                        getline(cin, c);
+                                        cout << "Enter postal code; ";
+                                        cin>>pc;
+                                        cout << "Enter country: ";
+                                        cin >> ws;
+                                        getline(cin, co);
+                                        customers[customerCount++] = customer( name, pass, id , phone, cn, c, pc, co);
+                                        cout << "Customer created successfully.\n";
+                                    } 
+                                    else {
+                                        cout << "Customer limit reached.\n";
+                                    }
+                                    break;
+                                }
+                
+                case 4:
+                    return 0;
+
+                default:
+                    cout << "Invalid choice!\n";
+            }
+        } 
+        else {
+            cout << "A user is already logged in. Please logout first.\n";
+        }
+    }
+
+    return 0;
+}

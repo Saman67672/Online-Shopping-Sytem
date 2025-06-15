@@ -1,0 +1,210 @@
+#ifndef CLASS_H
+#define CLASS_H
+#include <iostream>
+#include <string>
+#include <fstream>
+using namespace std;
+
+//---------------class declarations-----------------------
+class user;
+class cart;
+class customer;
+class admin;
+class product;
+class shipping;
+class order;
+class inventory;
+class shipping;
+class supplier;
+class review;
+
+//---------------global functions-----------------------
+
+        void displaySign();
+        void displayMenu();
+        void custMenu();
+        void adminMenu();
+        void displayProducts(inventory* inv);
+        void saveProductToFile(product *p);
+        void removeProductFromFile(int id);
+        void updateProductStockInFile(int id, int newQty, product* p);
+        void saveOrderToFile(order* o, customer* c);
+        void loadInventoryFromFile(inventory *inv);
+
+void printLoadedProducts(inventory *inv,int maxToShow);
+
+//CART CLASS 
+class cart {
+private:
+    product* items[20];
+    int quantities[20];
+    int itemCount;
+
+public:
+    cart() : itemCount(0) {}
+    bool addProduct(int id, int qty, inventory *inv);
+    bool removeProduct(int id, inventory *inv);
+    void viewCart();
+    bool isEmpty();
+    float calculateTotal();
+    void clearCart();
+    order* checkout();
+};
+
+//---------------- ---------------
+
+// SUPPLIER CLASS
+class supplier {
+private:
+    int supplierId;
+    string name;
+    string phoneNo;
+public:
+    supplier(int i, string n, string p)
+        : supplierId(i), name(n), phoneNo(p) {}
+    void supplierInfo();
+    void setSupplierInfo(int sid, string sna, string sphone);
+    int getSupplierId();
+    string getSupplierName();
+    string getPhoneNo();
+};
+
+// SHIPPING CLASS
+class shipping{
+    int streetNo;
+    string city;
+    int postalCode;
+    string country;
+    public:
+        shipping(): streetNo(0),city(""),postalCode(0),country("")  {}
+        shipping(int n,string c,int pc, string co): 
+        streetNo(n),city(c),postalCode(pc),country(co) {}
+        void inputAddress();
+        void displayAddress();
+};
+
+// BASE CLASS: USER
+class user {
+protected:
+    string userName;
+    string password;
+    static bool loggedIn;  // Track if any user is logged in
+public:
+    user(){}
+    user( string n, string p) : userName(n), password(p) {}
+    string getUserName();
+    string getPassword();
+    bool logIn( const string &getUserName, const string &password);   // Input and verify password, block if someone logged in
+    bool logOut();  // Logout user, reset loggedIn flag
+    static bool isLoggedIn(); 
+    virtual ~user() {}
+};
+
+// ADMIN CLASS
+class admin : public user {
+private:
+    int adminId;
+public:
+    admin( string n, string p, int id) : user(n, p), adminId(id) {}
+    // Admin-only functions - allow only if logged in
+    void addProduct(inventory *inv);
+    void removeProduct(inventory *inv);
+};
+
+// CUSTOMER CLASS 
+class customer : public user {
+private:
+    int customerId;
+    string phoneNo;
+    cart myCart;
+public:
+    shipping address;
+    order* orderList[20];
+    int orderCount;
+    customer(){}
+    customer( string n, string p, int id, string pn,int cn,string c,int pc, string co)
+        : user(n, p), customerId(id), phoneNo(pn), orderCount(0), address(cn,c,pc,co) {}
+    int getCustomerId();
+    int getOrderCount();
+    shipping getAddress();
+    void placeOrder(order* o);
+    cart getCart();
+    cart& getCartAddress();
+};
+
+// PRODUCT CLASS 
+class product {
+private:
+    int productId;
+    string name;
+    float price;
+    int quantity;
+    string category;
+public:
+    supplier s;
+    product(): productId(0), name(""), price(0), quantity(0), category(""),s(0,"","") {}
+    product(int i, string n, string c, int q, float p,int sid,string sna,string sphone)
+        : productId(i), name(n), price(p), quantity(q), category(c),s(sid,sna,sphone) {}
+    product inputProductDetail();
+    void setProductDetail(int i,string n, string c, int q, float p,int sid,string sna,string sphone);
+    int getQuantity();
+    void setQuantity(int q);
+    void getDetail();
+    int getproductId();
+    float getPrice();
+    string getName();
+    int getId();
+    string getCategory();
+};
+
+// ORDER CLASS (Composition: owns products)
+class order {
+private:
+    int orderId;
+    string orderDate;
+    int status;
+    int productCount;
+public:
+    product* products[10];
+    int quantities[20];
+    order(int i, string date) : orderId(i), orderDate(date), status(1), productCount(0) {}
+    int getOrderStatus();
+    int getProductCount();
+    void showStatus();
+    float calculateTotal();
+    int getOrderId();
+    string getDate();
+    void updateOrderStatus(int s);
+    void addProduct(product* p);
+};
+
+// INVENTORY CLASS (Aggregation)
+class inventory {
+private:
+    int inventoryId;
+    int productCount;
+public:
+    product* productList[20];
+    inventory(int id) {
+        // Initialize all product pointers
+        for (int i = 0; i < 30; ++i) {
+            productList[i] = new product();
+        }
+        productCount = 0;
+    }
+    
+    ~inventory() {
+        // Clean up memory
+        for (int i = 0; i < 30; ++i) {
+            delete productList[i];
+        }
+    }
+    //inventory(int i) : inventoryId(i), productCount(0) {}
+    void incrementCount();
+    product* getProductList (int i);
+    void updateStock(int id, int qty);
+    void setProductCount(int pc);
+    int getProductCount();
+};
+
+#endif 

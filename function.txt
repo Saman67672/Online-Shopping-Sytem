@@ -1,0 +1,813 @@
+#include "class.h"
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <sstream>
+using namespace std;
+
+void printLoadedProducts(inventory *inv, int maxToShow = 5) {
+    cout << "\nCurrently Loaded Products:\n";
+    for (int i = 0; i < maxToShow && i < 30; i++) {
+        if (inv->productList[i] != nullptr) {
+            cout << "ID: " << inv->productList[i]->getproductId() 
+                 << " Name: " << inv->productList[i]->getName() << endl;
+        }
+    }
+}
+void displaySign() {
+    const int HEIGHT = 7;
+
+    const char* S[HEIGHT] = {
+        " ***** ",
+        "*      ",
+        "*      ",
+        " ***** ",
+        "      *",
+        "      *",
+        " ***** "
+    };
+
+    const char* H[HEIGHT] = {
+        "*     *",
+        "*     *",
+        "*     *",
+        "*******",
+        "*     *",
+        "*     *",
+        "*     *"
+    };
+
+    const char* O[HEIGHT] = {
+        " ***** ",
+        "*     *",
+        "*     *",
+        "*     *",
+        "*     *",
+        "*     *",
+        " ***** "
+    };
+
+    const char* P[HEIGHT] = {
+        "****** ",
+        "*     *",
+        "*     *",
+        "****** ",
+        "*      ",
+        "*      ",
+        "*      "
+    };
+
+    const char* I[HEIGHT] = {
+        "*******",
+        "   *   ",
+        "   *   ",
+        "   *   ",
+        "   *   ",
+        "   *   ",
+        "*******"
+    };
+
+    const char* N[HEIGHT] = {
+        "*     *",
+        "**    *",
+        "* *   *",
+        "*  *  *",
+        "*   * *",
+        "*    **",
+        "*     *"
+    };
+
+    const char* G[HEIGHT] = {
+        " ***** ",
+        "*      ",
+        "*      ",
+        "*  ****",
+        "*     *",
+        "*     *",
+        " ***** "
+    };
+    for (int i = 0; i < HEIGHT; ++i) {
+        cout << S[i] << "  "
+             << H[i] << "  "
+             << O[i] << "  "
+             << P[i] << "  "
+             << P[i] << "  "
+             << I[i] << "  "
+             << N[i] << "  "
+             << G[i] << endl;
+    }
+    
+}
+
+void displayMenu() {
+    cout << "1. Login as customer\n2. Login as admin\n3. Create new customer \n4. exit" << endl;
+}
+
+void custMenu(){
+    cout<<"1.View products\n2.Add to cart\n3.Remove from cart\n4.Checkout";
+    cout<<"\n5.Update address\n6.Track order\n7.Logout";
+}
+
+void adminMenu(){
+    cout<<"1.Add stock\n2.rRemove product\n3.Restock product";
+    cout<<"\n4.Update order status\n5.Logout";
+}
+
+
+// ----- FILE functions -----
+
+
+void loadInventoryFromFile(inventory *inv) {
+    ifstream inFile("inventory.txt");
+    if (!inFile) {
+        cerr << "Error: Cannot open inventory file" << endl;
+        return;
+    }
+
+    // Skip header/ASCII art lines
+    for (int i = 0; i < 10; ++i) {
+        string dummy;
+        if (!getline(inFile, dummy)) {
+            cerr << "Warning: File has fewer than 10 header lines" << endl;
+            break;
+        }
+    }
+
+    string line;
+    int count = 0;
+    while (getline(inFile, line) && count < 30) {
+        // Skip empty lines
+        if (line.empty() || line.find_first_not_of(" \t") == string::npos) 
+            continue;
+
+        // Parse clean pipe-delimited format
+        stringstream ss(line);
+        string token;
+        vector<string> tokens;
+
+        while (getline(ss, token, '|')) {
+            tokens.push_back(token);
+        }
+
+        // Validate token count
+        if (tokens.size() != 8) {
+            cerr << "Skipping malformed line (expected 8 fields): " << line << endl;
+            continue;
+        }
+
+        try {
+            // Convert fields - no trimming needed with clean format
+            int id = stoi(tokens[0]);
+            string& name = tokens[1];
+            string& category = tokens[2];
+            int quantity = stoi(tokens[3]);
+            float price = stof(tokens[4]);
+            int supplierId = stoi(tokens[5]);
+            string& supplierName = tokens[6];
+            string& contact = tokens[7];
+
+            // Debug output
+            //cout << "Loading product " << id << ": " << name << endl;
+
+            // Store product - CRITICAL: Ensure array is initialized
+            if (inv->productList[count] == nullptr) {
+                cerr << "Error: productList[" << count << "] not initialized!" << endl;
+                continue;
+            }
+            
+            inv->productList[count]->setProductDetail(id, name, category, quantity, price,
+                supplierId, supplierName, contact);
+            
+            inv->incrementCount(); // Increment counter
+            count++;
+        } 
+        catch (const exception& e) {
+            cerr << "Error parsing line: " << line << endl
+                 << "Reason: " << e.what() << endl;
+        }
+    }
+    
+    cout << "Successfully loaded " << count << " products" << endl;
+    inFile.close();
+}
+
+void displayProducts(inventory* inv) {
+    ifstream fin("inventory.txt");
+    if (!fin.is_open()) {
+        cout << "Failed to open inventory file.\n";
+        return;
+    }
+
+    // Skip the first 10 lines (header)
+    string skipLine;
+    for (int i = 0; i < 10 && getline(fin, skipLine); ++i);
+
+    cout << "\n----- Product List -----\n";
+    string id, name, category, quantity, price, sid, sname, sphone;
+    bool foundProducts = false;
+
+    while (
+        getline(fin, id, '|') &&
+        getline(fin, name, '|') &&
+        getline(fin, category, '|') &&
+        getline(fin, quantity, '|') &&
+        getline(fin, price, '|') &&
+        getline(fin, sid, '|') &&
+        getline(fin, sname, '|') &&
+        getline(fin, sphone)
+    ) {
+        // Manual trim function without isspace()
+        auto trim = [](string &s) {
+            // Trim left
+            while (!s.empty() && (s[0] == ' ' || s[0] == '\t' || s[0] == '\n' || s[0] == '\r')) {
+                s.erase(0, 1);
+            }
+            // Trim right
+            while (!s.empty() && (s.back() == ' ' || s.back() == '\t' || s.back() == '\n' || s.back() == '\r')) {
+                s.pop_back();
+            }
+        };
+
+        // Trim all fields
+        trim(id); trim(name); trim(category);
+        trim(quantity); trim(price);
+        trim(sid); trim(sname); trim(sphone);
+
+        // Skip if ID is "0" or empty, or if other essential fields are missing
+        if (id == "0" || id.empty() || name.empty() || category.empty() ||
+            quantity.empty() || price.empty() || sid.empty()) {
+            continue;
+        }
+
+        foundProducts = true;
+        cout << "Product ID: " << id << "\n";
+        cout << "Name: " << name << "\n";
+        cout << "Category: " << category << "\n";
+        cout << "Quantity: " << quantity << "\n";
+        cout << "Price: " << price << "\n";
+        cout << "Supplier ID: " << sid << ", Name: " << sname << ", Phone: " << sphone << "\n";
+        cout << "------------------------\n";
+    }
+
+    if (!foundProducts) {
+        cout << "No valid products found in inventory.\n";
+    }
+
+    fin.close();
+}
+
+
+
+void saveProductToFile(product* p) {
+    ofstream fout("inventory.txt", ios::app);
+    if (fout.is_open()) {
+        fout << p->getproductId() << "|" << p->getName() << " |  " << p->getCategory()
+             << "|" << p->getQuantity() << "|" << p->getPrice() << "|"
+             << p->s.getSupplierId() << "|   " << p->s.getSupplierName() << "    |   " << p->s.getPhoneNo() << "\n";
+        fout.close();
+    }
+}
+
+
+void removeProductFromFile(int id) {
+    ifstream fin("inventory.txt");
+    if (!fin.is_open()) {
+        cerr << "Error: Could not open inventory file for reading\n";
+        return;
+    }
+
+    ofstream fout("temp.txt");
+    if (!fout.is_open()) {
+        cerr << "Error: Could not open temporary file for writing\n";
+        fin.close();
+        return;
+    }
+
+    string line;
+    bool found = false;
+    while (getline(fin, line)) {
+        size_t pos = line.find("|");
+        if (pos == string::npos) {
+            fout << line << "\n"; // keep malformed lines?
+            continue;
+        }
+        
+        try {
+            int currId = stoi(line.substr(0, pos));
+            if (currId != id) {
+                fout << line << "\n";
+            } else {
+                found = true;
+            }
+        } catch (const std::exception& e) {
+            cerr << "Warning: Invalid ID format in line: " << line << "\n";
+            fout << line << "\n"; // keep the line anyway
+        }
+    }
+
+    fin.close();
+    fout.close();
+
+    if (!found) {
+        cout << "Product with ID " << id << " not found in inventory\n";
+        remove("temp.txt"); // clean up
+        return;
+    }
+
+    if (remove("inventory.txt") != 0) {
+        perror("Error removing original file");
+        return;
+    }
+    if (rename("temp.txt", "inventory.txt") != 0) {
+        perror("Error renaming temporary file");
+    }
+}
+
+void updateProductStockInFile(int id, int newQty, product* p) {
+    ifstream inFile("inventory.txt");
+    ofstream outFile("temp.txt");
+
+    if (!inFile || !outFile) {
+        throw runtime_error("Cannot open inventory files");
+    }
+
+    string line;
+    while (getline(inFile, line)) {
+        stringstream ss(line);
+        string token;
+        vector<string> tokens;
+        
+        // Parse line
+        while (getline(ss, token, '|')) {
+            tokens.push_back(token);
+        }
+
+        // Check if this is our product line
+        if (tokens.size() >= 1 && stoi(tokens[0]) == id) {
+            // Reconstruct line with updated quantity
+            outFile << id << "|" << p->getName() << "|" << p->getCategory() << "|"
+                   << newQty << "|" << p->getPrice() << "|"
+                   << p->s.getSupplierId() << "|" << p->s.getSupplierName() << "|"
+                   << p->s.getPhoneNo() << "\n";
+        } else {
+            // Write unchanged line
+            outFile << line << "\n";
+        }
+    }
+
+    inFile.close();
+    outFile.close();
+    
+    // Atomic file replacement
+    remove("inventory.txt");
+    rename("temp.txt", "inventory.txt");
+}
+
+void saveOrderToFile(order* o, customer* c) {
+    ofstream fout("orders.txt", ios::app);
+    if (fout.is_open()) {
+        fout << "OrderID: " << o->getOrderId() << "\n";
+        fout << "Date: " << o->getDate() << "\n";
+        fout << "Customer: " << c->getUserName() << " (ID: " << c->getCustomerId() << ")\n";
+        fout << "Products:\n";
+        for (int i = 0; i < o->getProductCount(); ++i) {
+            fout << "- ID: " << o->products[i]->getId() << "    |   Name: " << o->products[i]->getName()
+                 << "   |   Category: " << o->products[i]->getCategory() << "   |   Price: " << o->products[i]->getPrice() << "\n";
+        }
+        fout << "Total: " << o->calculateTotal() << "\n";
+        fout << "Status: ";
+        switch (o->getOrderStatus()) {
+            case 1: fout << "Packaged"; break;
+            case 2: fout << "Ready To Ship"; break;
+            case 3: fout << "Shipped"; break;
+            case 4: fout << "Out For Delivery"; break;
+            case 5: fout << "Delivered"; break;
+            default: fout << "Unknown"; break;
+        }
+        fout << "\n-----\n";
+        fout.close();
+    }
+}
+
+
+
+
+// ----- CART class -----
+bool cart::addProduct(int id, int qty, inventory *inv) {
+    if (itemCount >= 20) {
+        cout << "Error: Cart is full (max 20 items)\n";
+        return false;
+    }
+
+    if (qty <= 0) {
+        cout << "Error: Quantity must be positive\n";
+        return false;
+    }
+
+    if (!inv) {
+        cout << "Error: Invalid inventory reference\n";
+        return false;
+    }
+
+    product* p = nullptr;
+    for (int i = 0; i < inv->getProductCount(); ++i) {
+        product* temp = inv->getProductList(i);
+        if (temp && temp->getproductId() == id) {
+            p = temp;
+            break;
+        }
+    }
+
+    if (!p) {
+        cout << "Error: Product ID " << id << " not found in inventory\n";
+        return false;
+    }
+
+    if (p->getQuantity() < qty) {
+        cout << "Error: Only " << p->getQuantity() << " units available (requested " << qty << ")\n";
+        return false;
+    }
+
+    items[itemCount] = p;
+    quantities[itemCount] = qty;
+    itemCount++;
+    p->setQuantity(p->getQuantity() - qty);
+    updateProductStockInFile(id, p->getQuantity(), p);
+
+    cout << "Added " << qty << " x " << p->getName() << " to cart\n";
+    return true;
+}
+
+bool cart::removeProduct(int id, inventory* inv) {
+    if (!inv) {
+        cerr << "Error: Null inventory reference\n";
+        return false;
+    }
+    // Find product in cart
+    for (int i = 0; i < itemCount; ++i) {
+        if (items[i] && items[i]->getproductId() == id) {
+            // Store product reference and quantity
+            int returnQty = quantities[i];
+            product* productToReturn = items[i];
+            // Remove item from cart (shift array)
+            for (int j = i; j < itemCount - 1; ++j) {
+                items[j] = items[j + 1];
+                quantities[j] = quantities[j + 1];
+            }
+            itemCount--;
+            items[itemCount] = nullptr; // Clear last reference
+
+            // Update inventory
+            inv->updateStock(id, returnQty); // This handles both memory and file update
+            
+            cout << "Successfully returned " << returnQty 
+                 << " units of product " << id << endl;
+            return true;
+        }
+    }
+    
+    cerr << "Error: Product " << id << " not found in cart\n";
+    return false;
+}
+
+void cart::viewCart() {
+    float total = 0;
+    for (int i = 0; i < itemCount; ++i) {
+        items[i]->getDetail();
+        cout << "Quantity: " << quantities[i] << "\n";
+        total += items[i]->getPrice() * quantities[i];
+    }
+    cout << "Total: $" << total << endl;
+}
+
+order* cart::checkout() {
+    order* o = new order(301,"13-05-2025");
+    for (int i = 0; i < itemCount; ++i) {
+        o->addProduct(items[i]);  // You might want to extend this to take quantity too
+        // Assuming you extend `order::addProduct(product*, int)`
+    }
+    o->updateOrderStatus(1); // Packaged or Initial status
+    clearCart();
+
+    return o;
+}
+
+void cart::clearCart() {
+    itemCount = 0;
+}
+
+// ----- USER class -----
+// Static member initialization
+bool user::loggedIn = false;
+
+string user::getUserName(){
+    return userName;
+}
+
+string user::getPassword(){
+    return password;
+}
+bool user::isLoggedIn(){ 
+    return loggedIn; 
+}
+
+bool user::logIn(const string& inputName, const string& inputPass) {
+    if (loggedIn) {
+        cout << "Another user is already logged in. Please logout first.\n";
+        return false;
+    }
+    if (inputName == userName && inputPass == password) {
+        loggedIn = true;  // Only set to true when credentials match
+        cout << "Login successful! Welcome, " << userName << ".\n";
+        return true;
+    }
+    else {
+        cout << "Invalid username or password.\n";
+        return false;
+    }
+}
+
+bool user::logOut() {
+    if (!loggedIn) {
+        cout << "No user is currently logged in.\n";
+        return false;
+    }
+    cout << userName << " Logged out successfully.\n";
+    user:: loggedIn = false;
+    return true;
+}
+
+// ----- ADMIN class -----
+void admin::addProduct(inventory *inv) {
+    if (!loggedIn) {
+        cout << "Access denied. Please log in as admin.\n";
+        return;
+    }
+
+    int currentCount = inv->getProductCount();
+    if (currentCount < 20) {
+        product* p = new product();
+        *p = p->inputProductDetail();
+
+        inv->productList[currentCount] = p;
+        inv->setProductCount(currentCount + 1); // <-- Ensure you update the count
+        saveProductToFile(p);
+        cout << "Product added to inventory.\n";
+    } else {
+        cout << "Inventory full.\n";
+    }
+}
+
+
+void admin::removeProduct(inventory *inv) {
+    if (!loggedIn) {
+        cout << "Access denied. Please log in as admin.\n";
+        return;
+    }
+    int id;
+    cout << "Enter ID to remove: ";
+    cin >> id;
+    int found = -1;
+    int count = inv->getProductCount();
+    for (int i = 0; i < count; i++) {
+        if (inv->productList[i]->getproductId() == id) {
+            found = i;
+            break;
+        }
+    }
+    if (found != -1) {
+        delete inv->productList[found]; // 💡 Deallocate memory
+        for (int i = found; i < count - 1; i++) {
+            inv->productList[i] = inv->productList[i + 1];
+        }
+        inv->productList[count - 1] = nullptr;
+        inv->setProductCount(count - 1); // ✅ Correctly update count
+        removeProductFromFile(id);
+        cout << "Product removed from inventory.\n";
+    } else {
+        cout << "Product not found in inventory.\n";
+    }
+}
+
+
+// ----- PRODUCT class -----
+
+product product::inputProductDetail(){
+    int id,qu;string na,ca;float pr;int sid;string sna,sphone;
+    cout<<"Enter ID: ";cin>>id;
+    cout<<"Enter Name: ";cin >> ws;getline(cin, na);
+    cout<<"Enter Category: ";cin>>ws;getline(cin, ca);
+    cout<<"Enter Quanity: ";cin>>qu;
+    cout<<"Enter Price: ";cin>>pr;
+    cout<<"Enter SupplierID: ";cin>>sid;
+    cout<<"Enter SupplierName: ";cin>>ws;getline(cin,sna);
+    cout<<"Enter Supplier Phone: ";cin>>ws;getline(cin,sphone);
+    product p(id,na,ca,qu,pr,sid,sna,sphone);
+    return p;
+}//int i, string n, string c, int q, float p,int sid,string sna,string sphon
+
+void product::setProductDetail(int i,string n, string c, int q, float p,int sid,string sna,string sphone){
+    productId=i,name=n,quantity=q,price=p;
+    s.setSupplierInfo(sid, sna,sphone);
+}
+
+int product::getId(){
+    return productId;
+}
+int product::getQuantity(){
+    return quantity;
+}
+
+void product::setQuantity(int q){
+    quantity=q;
+}
+
+void product::getDetail() {
+    cout << "Product ID: " << productId << "\nName: " << name 
+         << "\nPrice: " << price << "\nQuantity: " << quantity 
+         << "\nCategory: " << category;s.supplierInfo();
+}
+
+int product::getproductId(){
+    return productId;
+}
+float product::getPrice() {
+    return price;
+}
+string product::getName(){
+    return name;
+}
+string product::getCategory(){
+    return category;
+}
+
+// ----- ORDER class -----
+
+int order::getProductCount(){
+    return productCount;
+}
+int order:: getOrderStatus(){
+    return status;
+}
+void order::showStatus() {
+    cout << "Order status: ";
+    switch(status) {
+        case 1: cout << "Packaged"; break;
+        case 2: cout << "Ready To Ship"; break;
+        case 3: cout << "Shipped"; break;
+        case 4: cout << "Out For Delivery"; break;
+        case 5: cout << "Delivered"; break;
+        default: cout << "Unknown"; break;
+    }
+    cout << endl;
+}
+
+int order::getOrderId(){
+    return orderId;
+}
+
+string order::getDate(){
+    return orderDate;
+}
+
+float order::calculateTotal() {
+    float total = 0.0;
+    for (int i = 0; i < productCount; i++) {
+        total += products[i]->getPrice() * quantities[i];
+    }
+    return total;
+}
+
+void order::updateOrderStatus(int s) {
+    status = s;
+    cout << "Order status updated.\n";
+}
+
+void order::addProduct(product* p) {
+    if (productCount < 10) {
+        products[productCount++] = p;
+        cout << "Product added to order.\n";
+    } else {
+        cout << "Order product limit reached.\n";
+    }
+}
+
+// ----- CUSTOMER class -----
+bool cart::isEmpty() {
+    if (itemCount == 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+int customer::getCustomerId(){
+    return customerId;
+}
+
+shipping customer::getAddress(){
+    return address;
+}
+
+cart customer::getCart() { return myCart; }
+cart& customer::getCartAddress() { return myCart; } 
+int customer::getOrderCount(){
+    return orderCount;
+}
+
+void customer::placeOrder(order* o) {
+    if (orderCount < 20) {
+        orderList[orderCount++] = o;
+        cout << "Order placed.\n";
+    } else {
+        cout << "Order limit reached.\n";
+    }
+}
+
+// ----- INVENTORY class -----
+
+product* inventory:: getProductList(int index)  {
+    if (index >= 0 && index < productCount) {
+        return productList[index];
+    }
+    return nullptr;
+}
+
+void inventory::incrementCount() {
+        productCount += 1;
+}
+
+void inventory::updateStock(int id, int qty) {
+    // Validate quantity
+    if (qty == 0) {
+        cerr << "Warning: Zero quantity update requested for product " << id << endl;
+        return;
+    }
+
+    // Find and update product
+    for (int i = 0; i < productCount; ++i) {
+        if (productList[i] && productList[i]->getproductId() == id) {
+            // Atomic update
+            int oldQty = productList[i]->getQuantity();
+            int newQty = oldQty + qty;
+            
+            // Validate stock level
+            if (newQty < 0) {
+                cerr << "Error: Negative quantity (" << newQty 
+                     << ") not allowed for product " << id << endl;
+                return;
+            }
+
+            productList[i]->setQuantity(newQty);
+            updateProductStockInFile(id, newQty, productList[i]);
+            
+            cout << "Updated product " << id << " from " 
+                 << oldQty << " to " << newQty << endl;
+            return;
+        }
+    }
+    
+    cerr << "Error: Product " << id << " not found in inventory\n";
+}
+
+int inventory:: getProductCount(){
+    return productCount; 
+}
+
+void inventory::setProductCount(int pc){
+    productCount=pc;
+}
+
+// ----- SUPPLIER class -----
+
+void supplier::supplierInfo() {
+    cout << "Supplier ID: " << supplierId << "\nName: " << name << "\nPhone: " << phoneNo << "\n";
+}
+
+void supplier::setSupplierInfo(int sid, string sna, string sphone){
+    supplierId=sid, name=sna, phoneNo=sphone;
+}
+int supplier::getSupplierId(){
+    return supplierId;
+}
+
+string supplier::getSupplierName(){
+    return name;
+}
+
+string supplier::getPhoneNo(){
+    return phoneNo;
+}
+
+// ----- SHIPPING class -----
+void shipping::displayAddress(){
+    cout<<"\nstreet no:"<<streetNo<<"\tcity:"<<city;
+    cout<<"\tpostal code:"<<postalCode<<"\tcountry"<<country;
+}
+
+void shipping::inputAddress(){
+    cout<<"\nenter street no:";cin>>streetNo;cout<<"\nnenter city:";cin>>city;
+    cout<<"\tnenter postal code:";cin>>postalCode;cout<<"\tcountry";cin>>country;
+}
+

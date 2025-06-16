@@ -560,8 +560,7 @@ bool user::logIn(const string& inputName, const string& inputPass) {
         cout << "ERROR: 'this' pointer is invalid!" << endl;
         return false;
     }
-    else {cout<<"not nll";}
-    cout<<userName<<"\n";
+    else {cout<<"not null";}
     //cout<<inputPass<<"\t"<<password<<"\n";
     if (loggedIn) {
         cout << "Another user is already logged in. Please logout first.\n";
@@ -589,6 +588,17 @@ bool user::logOut() {
 }
 
 // ----- ADMIN class -----
+
+bool admin::loggin(const string& inputName, const string& inputPass){
+    loggedIn = true;
+    return true;
+}
+
+bool admin::loggout(){
+    //cout << " Logged out successfully.\n";
+    user:: loggedIn = false;
+    return true;
+}
 
 void admin::addProduct(inventory *inv) {
     if (!loggedIn) {

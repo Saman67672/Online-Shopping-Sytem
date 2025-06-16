@@ -5,7 +5,7 @@
 #include <sstream>
 using namespace std;
 
-void printLoadedProducts(inventory *inv, int maxToShow = 5) {
+void printLoadedProducts(inventory *inv, int maxToShow ) {
     cout << "\nCurrently Loaded Products:\n";
     for (int i = 0; i < maxToShow && i < 30; i++) {
         if (inv->productList[i] != nullptr) {
@@ -115,7 +115,6 @@ void adminMenu(){
 
 
 // ----- FILE functions -----
-
 
 void loadInventoryFromFile(inventory *inv) {
     ifstream inFile("inventory.txt");
@@ -326,13 +325,32 @@ void removeProductFromFile(int id) {
 void updateProductStockInFile(int id, int newQty, product* p) {
     ifstream inFile("inventory.txt");
     ofstream outFile("temp.txt");
+    
+    cout << "Starting file update process...\n";
 
-    if (!inFile || !outFile) {
+    if (!inFile.is_open() || !outFile.is_open()) {
         throw runtime_error("Cannot open inventory files");
     }
 
     string line;
+    bool headerPassed = false;
+
     while (getline(inFile, line)) {
+        // Skip empty lines and ASCII art (until the "ID | Name | ..." header)
+        if (!headerPassed) {
+            if (line.find("ID  |   Name    |   Category    |   Quantity    |   Price   |   SupplierID  |   SupplierName    |   ContactInfo") != string::npos) {
+                headerPassed = true;
+            }
+            outFile << line << "\n";  // Keep the header/art unchanged
+            continue;
+        }
+
+        // Skip empty lines after header
+        if (line.empty()) {
+            outFile << "\n";
+            continue;
+        }
+
         stringstream ss(line);
         string token;
         vector<string> tokens;
@@ -342,25 +360,45 @@ void updateProductStockInFile(int id, int newQty, product* p) {
             tokens.push_back(token);
         }
 
-        // Check if this is our product line
-        if (tokens.size() >= 1 && stoi(tokens[0]) == id) {
-            // Reconstruct line with updated quantity
-            outFile << id << "|" << p->getName() << "|" << p->getCategory() << "|"
-                   << newQty << "|" << p->getPrice() << "|"
-                   << p->s.getSupplierId() << "|" << p->s.getSupplierName() << "|"
-                   << p->s.getPhoneNo() << "\n";
-        } else {
-            // Write unchanged line
-            outFile << line << "\n";
+        // Trim whitespace from tokens (optional but recommended)
+        for (auto& t : tokens) {
+            t.erase(0, t.find_first_not_of(" \t"));
+            t.erase(t.find_last_not_of(" \t") + 1);
         }
+
+        // Check if we have enough tokens and the ID matches
+        if (tokens.size() >= 1 && !tokens[0].empty()) {
+            try {
+                if (stoi(tokens[0]) == id) {
+                    cout << "Updating product with ID: " << id << endl;
+                    outFile << id << "|" << p->getName() << "|" << p->getCategory() << "|"
+                           << newQty << "|" << p->getPrice() << "|"
+                           << p->s.getSupplierId() << "|" << p->s.getSupplierName() << "|"
+                           << p->s.getPhoneNo() << "\n";
+                    continue;
+                }
+            } catch (const invalid_argument& e) {
+                cerr << "Warning: Invalid ID in line: " << line << endl;
+            }
+        }
+
+        // Default: Write unchanged line
+        cout << "Writing unchanged line: " << line << endl;
+        outFile << line << "\n";
     }
 
     inFile.close();
     outFile.close();
     
     // Atomic file replacement
-    remove("inventory.txt");
-    rename("temp.txt", "inventory.txt");
+    if (remove("inventory.txt") != 0) {
+        throw runtime_error("Error removing original file");
+    }
+    if (rename("temp.txt", "inventory.txt") != 0) {
+        throw runtime_error("Error renaming temp file");
+    }
+    
+    cout << "Update completed successfully.\n";
 }
 
 void saveOrderToFile(order* o, customer* c) {
@@ -414,6 +452,7 @@ bool cart::addProduct(int id, int qty, inventory *inv) {
         product* temp = inv->getProductList(i);
         if (temp && temp->getproductId() == id) {
             p = temp;
+            //cout<<"i work here!";
             break;
         }
     }
@@ -431,8 +470,11 @@ bool cart::addProduct(int id, int qty, inventory *inv) {
     items[itemCount] = p;
     quantities[itemCount] = qty;
     itemCount++;
-    p->setQuantity(p->getQuantity() - qty);
-    updateProductStockInFile(id, p->getQuantity(), p);
+    //cout<<"i work before updation in file! new quantity: ";
+    float newQty = p->getQuantity() - qty;
+    //cout<<newQty;
+    p->setQuantity(newQty);
+    updateProductStockInFile(id, newQty, p);
 
     cout << "Added " << qty << " x " << p->getName() << " to cart\n";
     return true;
@@ -512,6 +554,15 @@ bool user::isLoggedIn(){
 }
 
 bool user::logIn(const string& inputName, const string& inputPass) {
+    //cout<<inputName;  DEBUGGING
+    //cout<<this;
+    if (this == nullptr) { // Safety check
+        cout << "ERROR: 'this' pointer is invalid!" << endl;
+        return false;
+    }
+    else {cout<<"not nll";}
+    cout<<userName<<"\n";
+    //cout<<inputPass<<"\t"<<password<<"\n";
     if (loggedIn) {
         cout << "Another user is already logged in. Please logout first.\n";
         return false;
@@ -538,6 +589,7 @@ bool user::logOut() {
 }
 
 // ----- ADMIN class -----
+
 void admin::addProduct(inventory *inv) {
     if (!loggedIn) {
         cout << "Access denied. Please log in as admin.\n";

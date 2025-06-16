@@ -383,8 +383,8 @@ void updateProductStockInFile(int id, int newQty, product* p) {
         }
 
         // Default: Write unchanged line
-        cout << "Writing unchanged line: " << line << endl;
-        outFile << line << "\n";
+       // cout << "Writing unchanged line: " << line << endl;
+        //outFile << line << "\n";
     }
 
     inFile.close();

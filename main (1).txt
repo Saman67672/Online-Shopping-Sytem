@@ -11,13 +11,17 @@ using std::getline;
 int main() {
     int choice;
     customer customers[20];
-    int customerCount = 0;
+    int customerCount = 0,max=10;
     displaySign();
     // Default customer
-    customers[customerCount++] = customer( "c", "c", 201, "1234567890",10,"islamabad",2005,"pakistan");
-    admin ad( "a", "a", 101);
+    customers[customerCount++] = customer( "cust", "cust", 201, "1234567890",10,"islamabad",2005,"pakistan");
+    admin ad( "admin", "admin", 101);
     inventory inv(301);
     loadInventoryFromFile(&inv);
+    //printLoadedProducts(&inv,max);//testing
+
+//string aname="admin",apass="admin";
+    //if (ad.logIn(aname, apass)){cout<<"admin logged in";}
 
     while (true) {
         cout << "\nMain Menu:\n";
@@ -178,13 +182,13 @@ int main() {
 
                 case 2:             
     { string aname, apass; 
-    cout << "Enter admin username: ";
-    cin >> ws;
-    getline(cin, aname);
-    cout << "Enter admin password: ";
-    cin >> ws;
-    getline(cin, apass);
-
+    //cout << "Enter admin username: ";
+    //cin >> ws;
+    //getline(cin, aname);
+    //cout << "Enter admin password: ";
+    //cin >> ws;
+    //getline(cin, apass);
+aname="ad",apass="ad";
     if (ad.logIn(aname, apass)) {
         while (ad.isLoggedIn()) {
             adminMenu();

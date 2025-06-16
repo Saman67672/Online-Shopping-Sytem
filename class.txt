@@ -108,6 +108,8 @@ public:
     admin(){}
     admin( string n, string p, int id) : user(n, p), adminId(id) {}
     // Admin-only functions - allow only if logged in
+    bool loggin(const string& inputName, const string& inputPass);
+    bool loggout();
     void addProduct(inventory *inv);
     void removeProduct(inventory *inv);
     virtual ~admin()=default;

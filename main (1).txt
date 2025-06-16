@@ -182,14 +182,14 @@ int main() {
 
                 case 2:             
     { string aname, apass; 
-    //cout << "Enter admin username: ";
-    //cin >> ws;
-    //getline(cin, aname);
-    //cout << "Enter admin password: ";
-    //cin >> ws;
-    //getline(cin, apass);
-aname="ad",apass="ad";
-    if (ad.logIn(aname, apass)) {
+    cout << "Enter admin username: ";
+    cin >> ws;
+    getline(cin, aname);
+    cout << "Enter admin password: ";
+    cin >> ws;
+    getline(cin, apass);
+//aname="ad",apass="ad";
+    if (ad.loggin(aname, apass)) {
         while (ad.isLoggedIn()) {
             adminMenu();
             cout << "\nEnter choice (1-5): ";
@@ -264,7 +264,7 @@ aname="ad",apass="ad";
                 }
 
                 case 5:  // Logout
-                    ad.logOut();
+                    ad.loggout();
                     cout << "Logged out successfully.\n";
                     break;
 
